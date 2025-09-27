@@ -1,0 +1,103 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[tests]"
+
+    - name: Run tests
+      run: |
+        # Run all tests except the Anvil integration test (requires local blockchain)
+        pytest -v --tb=short
+
+  integration-test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install Foundry
+      uses: foundry-rs/foundry-toolchain@v1
+      with:
+        version: nightly
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[tests]"
+
+    - name: Start Anvil fork
+      run: |
+        # Start Anvil fork of Base mainnet in background
+        anvil --fork-url https://mainnet.base.org --port 8545 &
+        # Wait for Anvil to be ready
+        sleep 5
+        # Verify Anvil is running
+        curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' http://localhost:8545
+
+    - name: Run integration test
+      env:
+        ANVIL_FORK_URL: https://mainnet.base.org
+        ANVIL_RPC_URL: http://localhost:8545
+        X402_SIGNER_KEY: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+        X402_RPC_URL: http://localhost:8545
+      run: |
+        pytest tests/test_integration_anvil.py::test_local_verify_and_settle_against_anvil -xvs
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ruff black mypy
+        pip install -e ".[tests]"
+
+    - name: Lint with ruff
+      run: |
+        ruff check src/ tests/ || true
+
+    - name: Check formatting with black
+      run: |
+        black --check src/ tests/ || true
+
+    - name: Type check with mypy
+      run: |
+        mypy src/ --ignore-missing-imports || true
+      continue-on-error: true

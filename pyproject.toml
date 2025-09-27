@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "django-x402"
+version = "0.0.1"
+description = "Django middleware for the x402 'Payment Required' protocol"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Conner Swann" }
+]
+keywords = ["django", "middleware", "payments", "402", "x402"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Framework :: Django",
+  "Framework :: Django :: 5.2",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+  "Django>=5.2",
+  "httpx>=0.27.0",
+  "x402>=0.1.0",
+  "eth-account>=0.13.4",
+  "web3>=6.20.0",
+]
+
+[project.optional-dependencies]
+tests = [
+  "pytest>=8",
+  "pytest-django>=4.8.0",
+  "respx>=0.21.1",
+  "anyio>=4.0.0",
+  "hexbytes>=0.3.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+  "src/django_x402",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+python_files = ["test_*.py", "*_tests.py"]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = [
+  "ignore::DeprecationWarning:httpx.*",
+  "ignore::DeprecationWarning:django.*",
+]
+
+
